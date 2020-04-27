@@ -55,7 +55,10 @@ def rollout(env: gym.Env, policies: policies.QPolicy, episodes: int, temp: float
                 env.render()
             pi = policies(state, temp)
             # How do you select the action given pi. Hint: use np.random.choice
-            action = np.random.choice([0, 1, 2], p=pi)    #TODO: fill in this line
+            if str(policies) == 'DQNPolicy':
+                action = np.random.choice([0, 1], p=pi) #TODO: fill in this line
+            else:
+                action = np.random.choice([0, 1, 2], p=pi)
             next_state, reward, done, _ = env.step(action)
             score += reward
             replay.append((state, action, reward, next_state, done))
