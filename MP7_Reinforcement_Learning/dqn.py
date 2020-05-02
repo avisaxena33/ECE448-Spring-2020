@@ -7,49 +7,6 @@ import torch.optim as optim
 import utils
 from policies import QPolicy
 
-class NeuralNet(torch.nn.Module):
-    def __init__(self, statesize, actionsize):
-        """
-        Initialize the layers of your neural network
-        @param lrate: The learning rate for the model.
-        @param loss_fn: The loss function
-        @param in_size: Dimension of input
-        @param out_size: Dimension of output
-        """
-        super(NeuralNet, self).__init__()
-        self.loss_fn = nn.MSELoss()
-        self.in_size = statesize
-        self.out_size = actionsize
-        self.lrate = .01
-        self.hidden = nn.Linear(self.in_size, 32, True)   # inputs to hidden layer
-        self.hidden2 = nn.Linear(32, 32, True)
-        self.output = nn.Linear(32, self.out_size, True) # output layer
-        self.optimizer = optim.SGD(self.get_parameters(), lr=self.lrate)
-        self.sigmoid = nn.Sigmoid() # activation function
-        self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
-        self.selu = nn.SELU()
-        self.leakyrelu = nn.LeakyReLU()
-
-    def get_parameters(self):
-        """ Get the parameters of your network
-        @return params: a list of tensors containing all parameters of the network
-        """
-        # return self.net.parameters()
-        return self.parameters()
-
-    def forward(self, x):
-        """ A forward pass of your autoencoder
-        @param x: an (N, in_size) torch tensor
-        @return xhat: an (N, out_size) torch tensor of output from the network
-        """
-        x = self.hidden(x)          # hidden linear combination -> sigmoid activation -> output linear combination -> sigmoid
-        x = self.leakyrelu(x)
-        x = self.hidden2(x)
-        x = self.leakyrelu(x)
-        x = self.output(x)
-        return x
-
 def make_dqn(statesize, actionsize):
     """
     Create a nn.Module instance for the q leanring model.
@@ -59,8 +16,7 @@ def make_dqn(statesize, actionsize):
 
     @return model: nn.Module instance
     """
-    my_model = NeuralNet(statesize, actionsize)
-    return my_model
+    return nn.Sequential(nn.Linear(statesize, 256, True), nn.LeakyReLU(), nn.Linear(256, 256, True), nn.LeakyReLU(), nn.Linear(256, actionsize, True))
 
 class DQNPolicy(QPolicy):
     """
@@ -79,7 +35,8 @@ class DQNPolicy(QPolicy):
         """
         super().__init__(statesize, actionsize, lr, gamma)
         self.model = model
-        self.env = env
+        self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
+        self.loss_fn = nn.MSELoss()
 
     def qvals(self, state):
         """
@@ -88,12 +45,12 @@ class DQNPolicy(QPolicy):
         @param state: the state
         
         @return qvals: the q values for the state for each action. 
-        """ 
+        """
         self.model.eval()
         with torch.no_grad():
             states = torch.from_numpy(state).type(torch.FloatTensor)
             qvals = self.model(states)
-        return qvals.numpy()
+        return np.asarray([qvals.numpy()])
 
     def td_step(self, state, action, reward, next_state, done):
         """
@@ -107,19 +64,18 @@ class DQNPolicy(QPolicy):
         @param done: true if episode has terminated, false otherwise
         @return loss: total loss the at this time step
         """
-        curr_quality = self.qvals(state)
-        next_state_max_quality = max(self.qvals(next_state))
+        curr_quality = self.model(torch.from_numpy(state).type(torch.FloatTensor))
+        next_state_max_quality = max(self.model(torch.from_numpy(next_state).type(torch.FloatTensor)))
         target = None
-        if done and next_state[0] >= 0.5:
+        if done:
             reward = 1.0
-            target = reward
+            target = torch.from_numpy(np.asarray(reward)).type(torch.FloatTensor)
         else:
             target = reward + self.gamma*next_state_max_quality
-        updated_curr_quality = curr_quality + self.lr*(target - curr_quality)
-        self.model.optimizer.zero_grad() # clears the gradient buffer
-        loss = self.model.loss_fn(curr_quality, target)  # loss function and backwards
+        loss = self.loss_fn(curr_quality[action], target) # loss function and backwards
+        self.optimizer.zero_grad() # clears the gradient buffer
         loss.backward()  
-        self.model.optimizer.step()      # optimizer step to update weights and all
+        self.optimizer.step()      # optimizer step to update weights and all
         loss = loss.item()
         return loss
 

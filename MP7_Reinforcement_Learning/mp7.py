@@ -7,13 +7,13 @@ import utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, help='path to model')
-parser.add_argument('--episodes', type=int, default=100, help='number of episodes')
+parser.add_argument('--episodes', type=int, default=1000, help='number of episodes')
 parser.add_argument('--epsilon', type=float, default=0.01, help='exploration temperature')
 
 args = parser.parse_args()
 
 # Environment (a Markov Decision Process model)
-env, statesize, actionsize = gym.make('MountainCar-v0'), 2, 3
+env, statesize, actionsize = gym.make('CartPole-v1'), 4, 2
 
 # Q Model
 model = utils.loadmodel(args.model, env, statesize, actionsize)
