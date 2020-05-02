@@ -16,7 +16,7 @@ def make_dqn(statesize, actionsize):
 
     @return model: nn.Module instance
     """
-    return nn.Sequential(nn.Linear(statesize, 256, True), nn.LeakyReLU(), nn.Linear(256, 256, True), nn.LeakyReLU(), nn.Linear(256, actionsize, True))
+    return nn.Sequential(nn.Linear(statesize, 128, True), nn.ReLU(), nn.Linear(128, 128, True), nn.ReLU(), nn.Linear(128, actionsize, True))
 
 class DQNPolicy(QPolicy):
     """
@@ -35,7 +35,7 @@ class DQNPolicy(QPolicy):
         """
         super().__init__(statesize, actionsize, lr, gamma)
         self.model = model
-        self.optimizer = optim.SGD(self.model.parameters(), lr=self.lr)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.loss_fn = nn.MSELoss()
 
     def qvals(self, state):
@@ -64,6 +64,7 @@ class DQNPolicy(QPolicy):
         @param done: true if episode has terminated, false otherwise
         @return loss: total loss the at this time step
         """
+        self.optimizer.zero_grad() # clears the gradient buffer
         curr_quality = self.model(torch.from_numpy(state).type(torch.FloatTensor))
         next_state_max_quality = max(self.model(torch.from_numpy(next_state).type(torch.FloatTensor)))
         target = None
@@ -73,7 +74,6 @@ class DQNPolicy(QPolicy):
         else:
             target = reward + self.gamma*next_state_max_quality
         loss = self.loss_fn(curr_quality[action], target) # loss function and backwards
-        self.optimizer.zero_grad() # clears the gradient buffer
         loss.backward()  
         self.optimizer.step()      # optimizer step to update weights and all
         loss = loss.item()

@@ -16,11 +16,11 @@ def hyperparameters():
     These are the hyperparameters that you can change
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--episodes', type=int, default=3000, help='number of episodes to simulate per iteration')
+    parser.add_argument('--episodes', type=int, default=1000, help='number of episodes to simulate per iteration')
     parser.add_argument('--trainsize', type=int, default=1000, help='number of training steps to take per iteration')
     parser.add_argument('--epsilon', type=float, default=1, help='exploration parameter')
-    parser.add_argument('--epsilon_min', type=float, default=0.02, help='minimum exploration parameter')
-    parser.add_argument('--epsilon_decay_factor', type=float, default=0, help='exploration decay parameter')
+    parser.add_argument('--epsilon_min', type=float, default=0.01, help='minimum exploration parameter')
+    parser.add_argument('--epsilon_decay_factor', type=float, default=.995, help='exploration decay parameter')
     parser.add_argument('--gamma', type=float, default=1, help='discount reward factor. represents how confident a '
                                                                   'model should be able to predict future rewards')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
